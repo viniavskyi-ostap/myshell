@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.14)
 project(myshell)
 
-set(headers)
-set(sources src/main.cpp)
-
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(myshell ${sources})
+set(headers inc/environment_variables.h)
+set(sources src/main.cpp src/environment_variables.cpp inc/parser.h src/parser.cpp)
+
+find_package(Boost REQUIRED COMPONENTS filesystem)
+
+include_directories(inc ${Boost_INCLUDE_DIRS})
+
+add_executable(myshell ${sources} ${headers})
+target_link_libraries(myshell ${Boost_LIBRARIES})
