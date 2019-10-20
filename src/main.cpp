@@ -22,30 +22,39 @@ int main(int argc, char *argv[], char *envp[]) {
 //    interpreter loop
     std::string command;
     std::string current_path = boost::filesystem::current_path().string();
-    while (true){
+    while (true) {
 //        read the command and parse it
         std::cout << current_path << "$ ";
         std::getline(std::cin, command);
         auto arguments = parse_command(command);
+
 //        execute command
         if (arguments[0] == nullptr)
             continue;
-        pid_t pid = fork();
-        if (pid == -1){
-            std::cout << "Can not fork to execute command" << std::endl;
-        } else if (pid == 0){ // child
-            auto program_name = arguments[0];
-            if (strchr(program_name, '/')){
-                execve( program_name, arguments.data(), env.to_array());
-            } else{
-                execvpe(program_name, arguments.data(), env.to_array());
+        auto program_name = arguments[0];
+        char *assignment_pos;
+        if ((assignment_pos = strchr(program_name, '='))) { // execute assignment command
+            auto program_name_str = std::string(program_name);
+            ptrdiff_t pos = assignment_pos - program_name;
+            setenv(program_name_str.substr(0, pos).c_str(),
+                    program_name_str.substr(pos + 1).c_str(), 1);
+        } else {
+            pid_t pid = fork();
+            if (pid == -1) {
+                std::cout << "Can not fork to execute command" << std::endl;
+            } else if (pid == 0) { // child
+                if (strchr(program_name, '/')) {
+                    execve(program_name, arguments.data(), env.to_array());
+                } else {
+                    execvpe(program_name, arguments.data(), env.to_array());
+                }
+                std::cout << "Command '" << program_name << "' not found." << std::endl;
+                exit(EXIT_FAILURE);
+            } else { // parent
+                int status;
+                waitpid(pid, &status, 0);
+                std::cout << "Status: " << WEXITSTATUS(status) << std::endl;
             }
-            std::cout << "Command '" << program_name << "' not found." << std::endl;
-            return -1;
-        } else{ // parent
-            int status;
-            waitpid(pid, &status, 0);
-            std::cout << "Status: " << status << std::endl;
         }
         release_arguments(arguments);
     }
