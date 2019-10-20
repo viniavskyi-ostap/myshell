@@ -38,7 +38,7 @@ static std::vector<std::string> get_tokens(std::string &command) {
             if (start == -1) start = i;
         } else {
             if (start != -1 && !open_quotes) {
-                tokens.push_back(command.substr(start, i - start + 1));
+                tokens.push_back(command.substr(start, i - start));
                 start = -1;
             }
         }

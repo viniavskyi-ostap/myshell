@@ -25,7 +25,10 @@ environment_variables::~environment_variables() {
 }
 
 char **environment_variables::to_array() {
-    return &env[0];
+    if (env.empty())
+        return nullptr;
+    else
+        return env.data();
 }
 
 int environment_variables::index(const std::string &key) {
