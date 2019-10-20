@@ -4,9 +4,8 @@
 
 #include <iostream>
 #include <environment_variables.h>
-#include <unistd.h>
-#include <wait.h>
 #include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
 #include "parser.h"
 
 
@@ -16,7 +15,6 @@ void add_external_programs_to_path(std::string program);
 int main(int argc, char *argv[], char *envp[]) {
     add_external_programs_to_path(std::string(argv[0]));
     environment_variables env(envp);
-
     return 0;
 }
 
