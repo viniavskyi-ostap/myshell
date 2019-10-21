@@ -28,13 +28,6 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
 
 
 int main(int argc, char *argv[], char *envp[]) {
-//    std::string current_path = "my_path";
-//    char *buf;
-//    while ((buf = readline( (current_path + "$ ").c_str() )) != nullptr ) {
-//        if (strlen(buf) > 0) {
-//            add_history(buf);
-//        }
-//    }
 
     add_external_programs_to_path(std::string(argv[0]));
 //    create copy of environment variables
