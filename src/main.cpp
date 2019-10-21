@@ -9,10 +9,20 @@
 #include <boost/filesystem.hpp>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <map>
 #include "parser.h"
+#include "builtins.h"
 
 
 void add_external_programs_to_path(std::string program);
+
+int assign_command(std::vector<char *> &arguments, char *position);
+
+int external_command_execution(std::vector<char *> &arguments, environment_variables &env);
+
+typedef std::function<int(char **)> func_t;
+
+std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path);
 
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -22,6 +32,9 @@ int main(int argc, char *argv[], char *envp[]) {
 //    interpreter loop
     std::string command;
     std::string current_path = boost::filesystem::current_path().string();
+    int err_code = 0;
+    std::map<std::string, func_t> callbacks = get_callbacks(err_code, env, current_path);
+
     while (true) {
 //        read the command and parse it
         std::cout << current_path << "$ ";
@@ -31,33 +44,17 @@ int main(int argc, char *argv[], char *envp[]) {
 //        execute command
         if (arguments[0] == nullptr)
             continue;
-        auto program_name = arguments[0];
         char *assignment_pos;
-        if ((assignment_pos = strchr(program_name, '='))) { // execute assignment command
-            auto program_name_str = std::string(program_name);
-            ptrdiff_t pos = assignment_pos - program_name;
-            setenv(program_name_str.substr(0, pos).c_str(),
-                    program_name_str.substr(pos + 1).c_str(), 1);
+        if ((assignment_pos = strchr(arguments[0], '='))) { // execute assignment command
+            err_code = assign_command(arguments, assignment_pos);
+        } else if (callbacks.find(std::string(arguments[0])) != callbacks.end()) {
+            err_code = callbacks[arguments[0]](arguments.data());
         } else {
-            pid_t pid = fork();
-            if (pid == -1) {
-                std::cout << "Can not fork to execute command" << std::endl;
-            } else if (pid == 0) { // child
-                if (strchr(program_name, '/')) {
-                    execve(program_name, arguments.data(), env.to_array());
-                } else {
-                    execvpe(program_name, arguments.data(), env.to_array());
-                }
-                std::cout << "Command '" << program_name << "' not found." << std::endl;
-                exit(EXIT_FAILURE);
-            } else { // parent
-                int status;
-                waitpid(pid, &status, 0);
-                std::cout << "Status: " << WEXITSTATUS(status) << std::endl;
-            }
+            err_code = external_command_execution(arguments, env);
         }
         release_arguments(arguments);
     }
+
     return 0;
 }
 
@@ -79,4 +76,62 @@ void add_external_programs_to_path(std::string program) {
 
     std::string new_path = std::string(getenv("PATH")) + ":" + internal_programs_path;
     setenv("PATH", new_path.c_str(), 1);
+}
+
+int assign_command(std::vector<char *> &arguments, char *position) {
+    if (arguments.size() > 2) {
+        std::cout << "Assignment operation doesn't accept flags" << std::endl;
+        return 1;
+    }
+
+    auto program_name = arguments[0];
+    auto program_name_str = std::string(program_name);
+    ptrdiff_t pos = position - program_name;
+    setenv(program_name_str.substr(0, pos).c_str(),
+            program_name_str.substr(pos + 1).c_str(), 1);
+    return 0;
+}
+
+int external_command_execution(std::vector<char *> &arguments, environment_variables &env) {
+    auto program_name = arguments[0];
+    int status = 0;
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        std::cout << "Can not fork to execute command" << std::endl;
+        return 1;
+    } else if (pid == 0) { // child
+        if (strchr(program_name, '/')) {
+            execve(program_name, arguments.data(), env.to_array());
+        } else {
+            execvpe(program_name, arguments.data(), env.to_array());
+        }
+        std::cout << "Command '" << program_name << "' not found." << std::endl;
+        exit(EXIT_FAILURE);
+    } else { // parent
+        waitpid(pid, &status, 0);
+    }
+
+    return WEXITSTATUS(status);
+}
+
+std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path) {
+    std::map<std::string, func_t> callbacks;
+
+    callbacks["mexit"] = &mexit;
+    callbacks["mecho"] = &mecho;
+
+    auto bind_merrno = [&status](char **argv) {return merrno(argv, status);};
+    callbacks["merrno"] = bind_merrno;
+
+    auto bind_mpwd = [&current_path](char **argv) {return mpwd(argv, current_path);};
+    callbacks["mpwd"] = bind_mpwd;
+
+    auto bind_mcd = [&current_path](char **argv) {return mcd(argv, current_path);};
+    callbacks["mcd"] = bind_mcd;
+
+    auto bind_mexport = [&env](char **argv) {return mexport(argv, env);};
+    callbacks["mexport"] = bind_mexport;
+
+    return callbacks;
 }
