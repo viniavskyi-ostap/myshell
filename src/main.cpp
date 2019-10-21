@@ -12,6 +12,8 @@
 #include <map>
 #include "parser.h"
 #include "builtins.h"
+#include "readline/history.h"
+#include "readline/readline.h"
 
 
 void add_external_programs_to_path(std::string program);
@@ -26,20 +28,30 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
 
 
 int main(int argc, char *argv[], char *envp[]) {
+//    std::string current_path = "my_path";
+//    char *buf;
+//    while ((buf = readline( (current_path + "$ ").c_str() )) != nullptr ) {
+//        if (strlen(buf) > 0) {
+//            add_history(buf);
+//        }
+//    }
+
     add_external_programs_to_path(std::string(argv[0]));
 //    create copy of environment variables
     environment_variables env(envp);
 //    interpreter loop
-    std::string command;
     std::string current_path = boost::filesystem::current_path().string();
     int err_code = 0;
     std::map<std::string, func_t> callbacks = get_callbacks(err_code, env, current_path);
 
-    while (true) {
+    char *buf;
+    while ((buf = readline( (current_path + "$ ").c_str() )) != nullptr ) {
+        if (strlen(buf) > 0) {
+            add_history(buf);
+        }
+
 //        read the command and parse it
-        std::cout << current_path << "$ ";
-        std::getline(std::cin, command);
-        auto arguments = parse_command(command);
+        auto arguments = parse_command(std::string(buf));
 
 //        execute command
         if (arguments[0] == nullptr)
@@ -55,6 +67,7 @@ int main(int argc, char *argv[], char *envp[]) {
         release_arguments(arguments);
     }
 
+    delete[] buf;
     return 0;
 }
 
