@@ -19,7 +19,6 @@ public:
     explicit environment_variables(char **global_env);
     ~environment_variables();
 
-    std::string get(char *) const;
 
     void set(const std::string &key, const std::string &value);
 

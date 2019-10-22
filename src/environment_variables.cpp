@@ -54,10 +54,3 @@ void environment_variables::set(const std::string &key, const std::string &value
         env[i] = new_record;
     }
 }
-
-std::string environment_variables::get(char *key) const {
-    std::string skey(key);
-    int i = index(key);
-    if (i == -1) return std::string();
-    else return skey.substr(skey.find('='), skey.size());
-}
