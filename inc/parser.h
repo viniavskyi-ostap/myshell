@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-std::vector<char *> parse_command(std::string command);
+std::vector<char *> parse_command(std::string&& command, int& err_code);
 
 void release_arguments(std::vector<char *> &arguments);
 
