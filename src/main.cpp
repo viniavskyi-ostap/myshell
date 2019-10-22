@@ -125,7 +125,7 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
     std::map<std::string, func_t> callbacks;
 
     callbacks["mexit"] = &mexit;
-    callbacks["mecho"] = &mecho;
+    callbacks["mecho"] =  [&env](char **argv) {return mecho(argv, env);};
 
     auto bind_merrno = [&status](char **argv) {return merrno(argv, status);};
     callbacks["merrno"] = bind_merrno;
@@ -133,7 +133,7 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
     auto bind_mpwd = [&current_path](char **argv) {return mpwd(argv, current_path);};
     callbacks["mpwd"] = bind_mpwd;
 
-    auto bind_mcd = [&current_path](char **argv) {return mcd(argv, current_path);};
+    auto bind_mcd = [&current_path, &env](char **argv) {return mcd(argv, current_path, env);};
     callbacks["mcd"] = bind_mcd;
 
     auto bind_mexport = [&env](char **argv) {return mexport(argv, env);};
