@@ -21,6 +21,8 @@ static bool detect_wildcard(std::string &token);
 
 static int resolve_wildcards(std::string &token, std::vector<char *> &arguments);
 
+static bool match_pattern(const std::string &mask, const std::string &token);
+
 static char *string_to_char_array(std::string token);
 
 std::vector<char *> parse_command(std::string &&command, int &err_code) {
@@ -106,9 +108,47 @@ static bool detect_wildcard(std::string &token) {
     return false;
 }
 
+static bool element_match(char c, std::string &mask_element) {
+    if (mask_element.size() == 1) {
+        return mask_element[0] == '?' || mask_element[0] == '*' || mask_element[0] == c;
+    }
+    return mask_element.substr(1, mask_element.size() - 2).find(c) != std::string::npos;
+}
+
 static bool match_pattern(const std::string &mask, const std::string &token) {
-    // dynamic programming algorithm
-    return false;
+    // if mask="a*[abc]" mask_elements will contain "a", "*", "[abc]" values
+    std::vector<std::string> mask_elements;
+    ssize_t start = -1;
+    for (size_t i = 0; i < mask.size(); ++i) {
+        if (start == -1) {
+            if (mask[i] == '[') start = i;
+            else mask_elements.push_back(std::string(1, mask[i]));
+        } else if (mask[i] == ']') {
+            mask_elements.push_back(mask.substr(start, i - start + 1));
+            start = -1;
+        }
+    }
+
+    bool array[token.size() + 1][mask_elements.size() + 1];
+
+    // fill array with false values
+    for (size_t i = 0; i <= token.size(); ++i) {
+        for (size_t j = 0; j <= mask_elements.size(); ++j) array[i][j] = false;
+    }
+    array[0][0] = true;
+
+    // dynamic programming
+    for (size_t i = 1; i <= token.size(); ++i) {
+        for (size_t j = 1; j <= mask_elements.size(); ++j) {
+            if (array[i - 1][j - 1] && element_match(token[i - 1], mask_elements[j - 1])) {
+                array[i][j] = true;
+            } else if (mask_elements[j - 1][0] == '*') {
+                array[i][j] = array[i - 1][j] || array[i][j - 1];
+            }
+        }
+    }
+
+    return array[token.size()][mask_elements.size()];
 }
 
 
@@ -117,13 +157,16 @@ static int resolve_wildcards(std::string &token, std::vector<char *> &arguments)
     // Step one : extract from token directory path
     bf::path path{token};
     auto directory = path.parent_path();
+
     if (directory.empty()) {
-        directory = bf::current_path();
+        directory = bf::path(".");
     }
+
     if (bf::is_directory(directory) == false) {
         std::cerr << "Directory path is invalid." << std::endl;
         return 1;
     }
+
     // Step two : extract from token mask
     auto mask = path.filename().string();
     // Step three: directory iteration

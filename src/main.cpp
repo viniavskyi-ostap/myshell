@@ -30,7 +30,6 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
 
 
 int main(int argc, char *argv[], char *envp[]) {
-
     add_external_programs_to_path(std::string(argv[0]));
 //    create copy of environment variables
     environment_variables env(envp);
