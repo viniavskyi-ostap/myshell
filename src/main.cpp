@@ -16,6 +16,8 @@
 #include "readline/readline.h"
 
 
+namespace bf=boost::filesystem;
+
 void add_external_programs_to_path(std::string program);
 
 int assign_command(std::vector<char *> &arguments, char *position);
@@ -38,17 +40,16 @@ int main(int argc, char *argv[], char *envp[]) {
     std::map<std::string, func_t> callbacks = get_callbacks(err_code, env, current_path);
 
     char *buf;
-    while ((buf = readline( (current_path + "$ ").c_str() )) != nullptr ) {
+    while ((buf = readline((current_path + "$ ").c_str())) != nullptr) {
         if (strlen(buf) > 0) {
             add_history(buf);
         }
 
 //        read the command and parse it
-        auto arguments = parse_command(std::string(buf));
+        auto arguments = parse_command(std::string(buf), err_code);
 
 //        execute command
-        if (arguments[0] == nullptr)
-            continue;
+        if (arguments[0] == nullptr) continue;
         char *assignment_pos;
         if ((assignment_pos = strchr(arguments[0], '='))) { // execute assignment command
             err_code = assign_command(arguments, assignment_pos);
@@ -94,7 +95,7 @@ int assign_command(std::vector<char *> &arguments, char *position) {
     auto program_name_str = std::string(program_name);
     ptrdiff_t pos = position - program_name;
     setenv(program_name_str.substr(0, pos).c_str(),
-            program_name_str.substr(pos + 1).c_str(), 1);
+           program_name_str.substr(pos + 1).c_str(), 1);
     return 0;
 }
 
@@ -127,16 +128,16 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
     callbacks["mexit"] = &mexit;
     callbacks["mecho"] = &mecho;
 
-    auto bind_merrno = [&status](char **argv) {return merrno(argv, status);};
+    auto bind_merrno = [&status](char **argv) { return merrno(argv, status); };
     callbacks["merrno"] = bind_merrno;
 
-    auto bind_mpwd = [&current_path](char **argv) {return mpwd(argv, current_path);};
+    auto bind_mpwd = [&current_path](char **argv) { return mpwd(argv, current_path); };
     callbacks["mpwd"] = bind_mpwd;
 
-    auto bind_mcd = [&current_path](char **argv) {return mcd(argv, current_path);};
+    auto bind_mcd = [&current_path](char **argv) { return mcd(argv, current_path); };
     callbacks["mcd"] = bind_mcd;
 
-    auto bind_mexport = [&env](char **argv) {return mexport(argv, env);};
+    auto bind_mexport = [&env](char **argv) { return mexport(argv, env); };
     callbacks["mexport"] = bind_mexport;
 
     return callbacks;
