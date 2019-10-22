@@ -13,11 +13,13 @@ class environment_variables {
 private:
     std::vector<char *> env;
 
-    int index(const std::string &key);
+    int index(const std::string &key) const;
 
 public:
     explicit environment_variables(char **global_env);
     ~environment_variables();
+
+    std::string get(char *) const;
 
     void set(const std::string &key, const std::string &value);
 

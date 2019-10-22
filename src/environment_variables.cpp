@@ -20,19 +20,17 @@ environment_variables::environment_variables(char **global_env) {
 }
 
 environment_variables::~environment_variables() {
-    for (int i = 0; i < env.size() - 1; ++i)
+    for (size_t i = 0; i < env.size() - 1; ++i)
         delete[] env[i];
 }
 
 char **environment_variables::to_array() {
-    if (env.empty())
-        return nullptr;
-    else
-        return env.data();
+    if (env.empty()) return nullptr;
+    else return env.data();
 }
 
-int environment_variables::index(const std::string &key) {
-    for (int i = 0; i < env.size() - 1; ++i) {
+int environment_variables::index(const std::string &key) const {
+    for (size_t i = 0; i < env.size() - 1; ++i) {
         std::string current(env[i]);
         if (current.rfind(key, 0) == 0)
             return i;
@@ -41,15 +39,12 @@ int environment_variables::index(const std::string &key) {
     return -1;
 }
 
-
 void environment_variables::set(const std::string &key, const std::string &value) {
     char *new_record = new char[key.size() + value.size() + 2];
-
     // fill buffer with key=value
     std::copy(&key[0], &key[0] + key.size(), new_record);
     new_record[key.size()] = '=';
     std::copy(&value[0], &value[0] + value.size() + 1, new_record + key.size() + 1);
-
     int i = index(key);
     if (i == -1) {
         env[env.size() - 1] = new_record;
@@ -58,4 +53,11 @@ void environment_variables::set(const std::string &key, const std::string &value
         delete[] env[i];
         env[i] = new_record;
     }
+}
+
+std::string environment_variables::get(char *key) const {
+    std::string skey(key);
+    int i = index(key);
+    if (i == -1) return std::string();
+    else return skey.substr(skey.find('='), skey.size());
 }
