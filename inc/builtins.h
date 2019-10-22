@@ -12,11 +12,11 @@ int merrno(char **argv, int error_code);
 
 int mpwd(char **argv, const std::string &current_path);
 
-int mcd(char **argv, std::string &current_path, const environment_variables &env);
+int mcd(char **argv, std::string &current_path);
 
 int mexit(char **argv);
 
-int mecho(char **argv, environment_variables &env);
+int mecho(char **argv);
 
 int mexport(char **argv, environment_variables &env);
 
