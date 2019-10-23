@@ -19,14 +19,16 @@ int merrno(char **argv, int error_code) {
     return 0;
 }
 
-int mexit(char **argv) {
+int mexit(char **argv, char *buf) {
+    int exit_code = 0;
     if (argv[1] != nullptr) {
         if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
             std::cout << "mexit [exit code] [-h|--help]" << std::endl;
             return 0;
-        } else exit(atoi(argv[1]));
+        } else exit_code = atoi(argv[1]);
     }
-    exit(0);
+    delete[] buf;
+    exit(exit_code);
 }
 
 int mpwd(char **argv, const std::string &current_path) {

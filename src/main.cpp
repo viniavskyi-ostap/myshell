@@ -26,7 +26,7 @@ int external_command_execution(std::vector<char *> &arguments, environment_varia
 
 typedef std::function<int(char **)> func_t;
 
-std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path);
+std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path, char *buf);
 
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -36,9 +36,9 @@ int main(int argc, char *argv[], char *envp[]) {
 //    interpreter loop
     std::string current_path = boost::filesystem::current_path().string();
     int err_code = 0;
-    std::map<std::string, func_t> callbacks = get_callbacks(err_code, env, current_path);
-
     char *buf;
+    std::map<std::string, func_t> callbacks = get_callbacks(err_code, env, current_path, buf);
+
     while ((buf = readline((current_path + "$ ").c_str())) != nullptr) {
         if (strlen(buf) > 0) {
             add_history(buf);
@@ -46,7 +46,6 @@ int main(int argc, char *argv[], char *envp[]) {
 
 //        read the command and parse it
         auto arguments = parse_command(std::string(buf), err_code);
-
 //        execute command
         if (arguments[0] == nullptr) continue;
         char *assignment_pos;
@@ -60,7 +59,6 @@ int main(int argc, char *argv[], char *envp[]) {
         release_arguments(arguments);
     }
 
-    delete[] buf;
     return 0;
 }
 
@@ -121,11 +119,13 @@ int external_command_execution(std::vector<char *> &arguments, environment_varia
     return WEXITSTATUS(status);
 }
 
-std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path) {
+std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path, char* buf) {
     std::map<std::string, func_t> callbacks;
 
-    callbacks["mexit"] = &mexit;
     callbacks["mecho"] = &mecho;
+
+    auto bind_mexit = [&status, buf](char **argv) { return mexit(argv, buf); };
+    callbacks["mexit"] = bind_mexit;
 
     auto bind_merrno = [&status](char **argv) { return merrno(argv, status); };
     callbacks["merrno"] = bind_merrno;

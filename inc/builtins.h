@@ -14,7 +14,7 @@ int mpwd(char **argv, const std::string &current_path);
 
 int mcd(char **argv, std::string &current_path);
 
-int mexit(char **argv);
+int mexit(char **argv, char* buf);
 
 int mecho(char **argv);
 
