@@ -19,7 +19,7 @@ int merrno(char **argv, int error_code) {
     return 0;
 }
 
-int mexit(char **argv, char *buf) {
+int mexit(char **argv) {
     int exit_code = 0;
     if (argv[1] != nullptr) {
         if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
@@ -27,7 +27,6 @@ int mexit(char **argv, char *buf) {
             return 0;
         } else exit_code = atoi(argv[1]);
     }
-    delete[] buf;
     exit(exit_code);
 }
 

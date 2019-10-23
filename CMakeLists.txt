@@ -14,6 +14,6 @@ include_directories(inc ${Boost_INCLUDE_DIRS})
 add_executable(myshell ${myshell_sources} ${myshell_headers})
 target_link_libraries(myshell ${Boost_LIBRARIES} readline)
 
-
-set_target_properties(mycat PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/builtins")
 add_executable(mycat src/external_builtins/mycat.c)
+set_target_properties(mycat PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/builtins")
+
