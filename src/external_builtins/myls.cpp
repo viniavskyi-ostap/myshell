@@ -3,12 +3,14 @@
 //
 
 #include <vector>
-#include <string>
-#include <boost/program_options.hpp>
 #include <iostream>
+#include <string>
+#include <ctime>
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
 
 namespace po = boost::program_options;
-
+namespace bf = boost::filesystem;
 
 class Options {
 public:
@@ -73,7 +75,21 @@ int main(int argc, char *argv[], char *envp[]) {
         std::cout << opts.sort_predicate << std::endl;
     }
 #endif
-
+    if (opts.filenames.empty() == false) {
+        for (auto &v: opts.filenames) {
+            if (bf::exists(v)) {
+                auto status = bf::status(v);
+                std::cout << "Type is " << status.type() << std::endl;
+                std::cout << "Permissions are " << status.permissions() << std::endl;
+                std::time_t t = bf::last_write_time(v);
+                auto last_modified = std::ctime(&t);
+                std::cout << "Last write time is " << last_modified << std::endl;
+                boost::system::error_code ec;
+                boost::uintmax_t fsize = bf::file_size(v, ec);
+                if (!ec) std::cout << "File size is " << fsize << std::endl;
+                else std::cout << "File_size failed" << std::endl;
+            } else std::cout << "No file or directory found: " << v;
+        }
+    }
     return 0;
 }
-
