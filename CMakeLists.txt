@@ -20,4 +20,4 @@ add_executable(mycat src/external_builtins/mycat.c)
 set_target_properties(mycat PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/builtins")
 
 add_executable(myls src/external_builtins/myls.cpp)
-set_target_properties(myls PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/builtins" LINK_LIBRARIES "Boost::program_options")
+set_target_properties(myls PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/builtins" LINK_LIBRARIES "Boost::program_options;Boost::filesystem")
