@@ -6,7 +6,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(myshell_headers inc/environment_variables.h)
 set(myshell_sources src/main.cpp src/environment_variables.cpp inc/parser.h src/parser.cpp inc/builtins.h src/builtins.cpp)
 
-add_compile_options("-DPRINT_OPTIONS")
+# add_compile_options("-DPRINT_OPTIONS")
 
 find_library(Readline_LIBRARY NAMES readline)
 find_package(Boost REQUIRED COMPONENTS filesystem program_options)
