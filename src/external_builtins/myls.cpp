@@ -6,7 +6,9 @@
 #include <iostream>
 #include <string>
 #include <ctime>
+#include <iomanip>
 #include <algorithm>
+#include <sys/stat.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
@@ -58,6 +60,7 @@ void parse_options(int argc, char *argv[], Options &opts) {
             opts.sort_predicate = vm["sort"].as<std::string>();
             for (auto &v: opts.sort_predicate) {
                 if (v != 'U' && v != 'S' && v != 't' && v != 'X' && v != 'N' && v != 'D' && v != 's') {
+                    std::cerr << "Wrong sorting predicate." << std::endl;
                     exit(2);
                 }
             }
@@ -72,7 +75,7 @@ void parse_options(int argc, char *argv[], Options &opts) {
 }
 
 
-void process_directory(bf::path &dir_path, Options &opts);
+void process_directory(bf::path &dir_path, Options &opts, bool print_dirname = true);
 
 void process_files(std::vector<bf::path> &v, Options &opts, bool full_name);
 
@@ -81,30 +84,6 @@ int main(int argc, char *argv[], char *envp[]) {
     Options opts;
     parse_options(argc, argv, opts);
 
-#ifdef PRINT_OPTIONS
-    if (opts.filenames.empty() == false) {
-        std::cout << "Filenames" << std::endl;
-        for (auto &v: opts.filenames) {
-            std::cout << v << std::endl;
-        }
-    }
-
-    std::cout << "Reverse order" << std::endl;
-    std::cout << opts.reverse_out << std::endl;
-
-    std::cout << "Recursive\n";
-    std::cout << opts.recursive << std::endl;
-
-    std::cout << "Filetype\n" << opts.filetype << std::endl;
-
-    std::cout << "Long format" << std::endl;
-    std::cout << opts.long_format << std::endl;
-
-    if (opts.sort_predicate.empty() == false) {
-        std::cout << "Sort predicate" << std::endl;
-        std::cout << opts.sort_predicate << std::endl;
-    }
-#endif
     if (opts.filenames.empty()) {
         opts.filenames.emplace_back(bf::current_path().string());
     }
@@ -122,23 +101,14 @@ int main(int argc, char *argv[], char *envp[]) {
         }
     }
     process_files(pure_files, opts, true);
-    for (auto &v: directories) process_directory(v, opts);
-/*
-//                auto status = bf::status(v);
-//                std::cout << "Type is " << status.type() << std::endl;
-//                std::cout << "Permissions are " << status.permissions() << std::endl;
-//                std::time_t t = bf::last_write_time(v);
-//                auto last_modified = std::ctime(&t);
-//                std::cout << "Last write time is " << last_modified << std::endl;
-//                boost::system::error_code ec;
-//                boost::uintmax_t fsize = bf::file_size(v, ec);
-//                if (!ec) std::cout << "File size is " << fsize << std::endl;
-//                else std::cout << "File_size failed" << std::endl;
-*/
+    if (directories.size() == 1 && pure_files.empty()) process_directory(directories[0], opts, false);
+    else {
+        for (auto &v: directories) process_directory(v, opts);
+    }
     return return_code;
 }
 
-void process_directory(bf::path &dir_path, Options &opts) {
+void process_directory(bf::path &dir_path, Options &opts, bool print_dirname) {
     std::vector<bf::path> pure_files;
     std::vector<bf::path> directories;
 
@@ -148,7 +118,8 @@ void process_directory(bf::path &dir_path, Options &opts) {
         pure_files.emplace_back(it->path());
         ++it;
     }
-    std::cout << dir_path.string() << ":" << std::endl;
+    if (print_dirname)
+        std::cout << dir_path.string() << ":" << std::endl;
     process_files(pure_files, opts, false);
     for (auto &v: directories) process_directory(v, opts);
 }
@@ -162,7 +133,7 @@ public:
     std::uintmax_t file_size;
     bf::path path;
 
-    explicit FileStat(bf::path v) {
+    explicit FileStat(bf::path &v) {
         path = v;
         status = bf::status(v);
         perms = status.permissions();
@@ -173,23 +144,57 @@ public:
     }
 };
 
-
-void sort_paths(std::vector<FileStat> &files) {
-    std::sort(files.begin(), files.end(), [](auto &a, auto &b) { return a.path.filename() < b.path.filename(); });
+bool is_special_file(FileStat &file) {
+    if (file.type == bf::file_type::directory_file) return false;
+    if (file.perms & S_IEXEC) return true;
+    return (file.type != bf::file_type::regular_file);
 }
 
-std::string type_sign(bf::file_type &v) {
-    return "X";
+typedef std::function<bool(FileStat &a, FileStat &b)> predicate_t;
+
+void sort_paths(std::vector<FileStat> &files, Options &opts) {
+    static std::map<char, predicate_t> predicates = {
+            {'S', [&opts](FileStat &a, FileStat &b) { return (a.file_size < b.file_size) != opts.reverse_out; }},
+            {'t', [&opts](FileStat &a, FileStat &b) {
+                return (a.last_modified_time < b.last_modified_time) != opts.reverse_out;
+            }},
+            {'X', [&opts](FileStat &a, FileStat &b) {
+                return (a.path.extension() < b.path.extension()) != opts.reverse_out;
+            }},
+            {'N', [&opts](FileStat &a, FileStat &b) {
+                return (a.path.filename() < b.path.filename()) != opts.reverse_out;
+            }},
+            {'D', [&opts](FileStat &a, FileStat &b) {
+                return (a.type == bf::file_type::directory_file && b.type != bf::file_type::directory_file) !=
+                       opts.reverse_out;
+            }},
+            {'s', [&opts](FileStat &a, FileStat &b) {
+                return (!is_special_file(a) && is_special_file(b)) != opts.reverse_out;
+            }}
+    };
+    for (auto &c: opts.sort_predicate) {
+        std::sort(files.begin(), files.end(), predicates[c]);
+    }
+}
+
+std::string type_sign(FileStat &v) {
+    if (v.type == bf::file_type::directory_file) return "/";
+    if (v.perms & S_IEXEC) return "*";
+    if (v.type == bf::file_type::regular_file) return "";
+    if (v.type == bf::file_type::socket_file) return "=";
+    if (v.type == bf::file_type::symlink_file) return "@";
+    if (v.type == bf::file_type::fifo_file) return "|";
+    return "?";
 }
 
 void process_files(std::vector<bf::path> &files, Options &opts, bool full_name) {
     std::vector<FileStat> filestats;
     for (auto &v: files) filestats.emplace_back(FileStat(v));
-    std::cout << opts.sort_predicate << " fuck you\n";
-    if (opts.sort_predicate.empty() == false) sort_paths(filestats);
-    int directory_type_number = -1; // assumption
+
+    if (opts.sort_predicate.empty() == false) sort_paths(filestats, opts);
+
     for (auto &v: filestats) {
-        if (opts.filetype || v.type == directory_type_number) std::cout << type_sign(v.type);
+        if (opts.filetype || v.type == bf::file_type::directory_file) std::cout << type_sign(v);
         if (full_name) std::cout << v.path.string();
         else std::cout << v.path.filename().string();
         std::cout << "    ";
