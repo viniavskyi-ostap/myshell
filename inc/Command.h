@@ -39,13 +39,8 @@ public:
 
     Command(std::string command, environment_variables &env,
             bool background_execution) : env(env), background_execution(background_execution) {
-        std::cout << command << std::endl;
         handle_redirections(command);
         arguments = parse_command(command, parse_err_code);
-        for (size_t i = 0; arguments[i]; ++i) {
-            std::cout << arguments[i] << std::endl;
-        }
-        std::cout << "in command constructor\n";
     }
 
     
@@ -69,10 +64,6 @@ public:
     }
 
     int execute_me(int fd_to_close, std::map<std::string, func_t> &callbacks) {
-        std::cout << " IN execute me\n";
-        for (size_t i = 0; arguments[i]; ++i) {
-            std::cout << arguments[i] << std::endl;
-        }
         if (parse_err_code != 0) {
             return parse_err_code;
         }
@@ -199,7 +190,7 @@ private:
                 }
             }
         } else {
-            int fd = open(substr.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            int fd = open(substr.c_str(), O_TRUNC | O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
             set_fd(fd_to_change, fd);
         }
     }

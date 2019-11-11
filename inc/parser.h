@@ -13,3 +13,4 @@ std::vector<char *> parse_command(std::string& command, int& err_code);
 void release_arguments(std::vector<char *> &arguments);
 
 #endif //MYSHELL_PARSER_H
+

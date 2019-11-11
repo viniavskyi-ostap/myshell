@@ -2,18 +2,14 @@
 // Created by viniavskyi on 18.10.19.
 //
 
-#include <iostream>
 #include <string>
 #include <cstring>
 #include <environment_variables.h>
 #include <boost/filesystem.hpp>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <map>
-#include "parser.h"
-#include "builtins.h"
-#include "Command.h"
 #include <boost/regex.hpp>
+#include <ostream>
+#include "builtins.h"
 #include "readline/history.h"
 #include "readline/readline.h"
 #include "pipe.h"
@@ -35,6 +31,7 @@ public:
     }
 };
 
+int interpret(std::string &&command, std::map<std::string, func_t> &callbacks, environment_variables &env);
 
 int main(int argc, char *argv[], char *envp[]) {
     add_external_programs_to_path(std::string(argv[0]));
@@ -50,8 +47,7 @@ int main(int argc, char *argv[], char *envp[]) {
         if (strlen(buf.buffer) > 0) {
             add_history(buf.buffer);
         }
-        auto commands = pipe_parser(std::string(buf.buffer), env);
-        err_code = pipe_exec(commands, callbacks);
+        err_code = interpret(std::string(buf.buffer), callbacks, env);
     }
 
     return 0;
@@ -97,4 +93,29 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
     callbacks["mexport"] = bind_mexport;
 
     return callbacks;
+}
+
+int interpret(std::string &&command, std::map<std::string, func_t> &callbacks, environment_variables &env){
+//    find # symbol
+    auto comment_sign_pos = command.find('#');
+    if (comment_sign_pos != std::string::npos) {
+        command = command.substr(0, comment_sign_pos);
+    }
+
+    const std::string temp_file = ".temp";
+    const boost::regex regex("\\$(.*)");
+    boost::sregex_token_iterator iter(command.begin(), command.end(), regex, 0);
+    boost::sregex_token_iterator end;
+
+    for (; iter != end; ++iter) {
+        std::string command_to_execute = (*iter).str().substr(2, (*iter).str().size() - 3) + " > " + temp_file;
+        pipe_exec(command_to_execute, callbacks, env);
+        std::ifstream in(temp_file);
+        auto ss = std::ostringstream{};
+        ss << in.rdbuf();
+        auto output = ss.str();
+        command = boost::regex_replace(command, regex, output, boost::format_first_only);
+    }
+    std::cout << command << "\n";
+    return pipe_exec(command, callbacks, env);
 }

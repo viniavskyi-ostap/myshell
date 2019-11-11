@@ -12,8 +12,8 @@
 
 using func_t=std::function<int(char **)>;
 
-std::vector<Command> pipe_parser(std::string &&command, environment_variables &env);
+std::vector<Command> pipe_parser(std::string command, environment_variables &env);
 
-int pipe_exec(std::vector<Command> &commands, std::map<std::string, func_t> &callbacks);
+int pipe_exec(std::string command, std::map<std::string, func_t> &callbacks, environment_variables &env);
 
 #endif //MYSHELL_PIPE_H
