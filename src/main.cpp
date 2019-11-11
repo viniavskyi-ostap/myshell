@@ -13,7 +13,7 @@
 #include "readline/history.h"
 #include "readline/readline.h"
 #include "pipe.h"
-
+#include <boost/algorithm/string/replace.hpp>
 
 namespace bf=boost::filesystem;
 
@@ -23,15 +23,18 @@ typedef std::function<int(char **)> func_t;
 
 std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path);
 
-class command_buffer{
+class command_buffer {
 public:
-    char* buffer = nullptr;
-    ~command_buffer(){
+    char *buffer = nullptr;
+
+    ~command_buffer() {
         delete[] buffer;
     }
 };
 
-int interpret(std::string &&command, std::map<std::string, func_t> &callbacks, environment_variables &env);
+int interpret(std::string command, std::map<std::string, func_t> &callbacks, environment_variables &env);
+
+int execute_file(std::string filename, std::map<std::string, func_t> &callbacks, environment_variables &env);
 
 int main(int argc, char *argv[], char *envp[]) {
     add_external_programs_to_path(std::string(argv[0]));
@@ -43,11 +46,20 @@ int main(int argc, char *argv[], char *envp[]) {
     auto buf = command_buffer();
     std::map<std::string, func_t> callbacks = get_callbacks(err_code, env, current_path);
 
+    if (argc == 2) {
+        return execute_file(std::string(argv[1]), callbacks, env);
+    }
     while ((buf.buffer = readline((current_path + "$ ").c_str())) != nullptr) {
         if (strlen(buf.buffer) > 0) {
             add_history(buf.buffer);
         }
-        err_code = interpret(std::string(buf.buffer), callbacks, env);
+        std::string buffero(buf.buffer);
+        boost::algorithm::trim(buffero);
+        if (buffero[0] != '.') {
+            err_code = interpret(buffero, callbacks, env);
+        } else {
+            err_code = execute_file(buffero.substr(1, buffero.size() - 1), callbacks, env);
+        }
     }
 
     return 0;
@@ -95,7 +107,7 @@ std::map<std::string, func_t> get_callbacks(int &status, environment_variables &
     return callbacks;
 }
 
-int interpret(std::string &&command, std::map<std::string, func_t> &callbacks, environment_variables &env){
+int interpret(std::string command, std::map<std::string, func_t> &callbacks, environment_variables &env) {
 //    find # symbol
     auto comment_sign_pos = command.find('#');
     if (comment_sign_pos != std::string::npos) {
@@ -103,19 +115,34 @@ int interpret(std::string &&command, std::map<std::string, func_t> &callbacks, e
     }
 
     const std::string temp_file = ".temp";
-    const boost::regex regex("\\$(.*)");
+    const boost::regex regex("\\$([^)]*)");
     boost::sregex_token_iterator iter(command.begin(), command.end(), regex, 0);
     boost::sregex_token_iterator end;
 
+    std::string command_clean = command;
     for (; iter != end; ++iter) {
-        std::string command_to_execute = (*iter).str().substr(2, (*iter).str().size() - 3) + " > " + temp_file;
+        std::string command_to_execute = (*iter).str().substr(2, (*iter).str().size() - 2) + " > " + temp_file;
         pipe_exec(command_to_execute, callbacks, env);
         std::ifstream in(temp_file);
         auto ss = std::ostringstream{};
         ss << in.rdbuf();
         auto output = ss.str();
-        command = boost::regex_replace(command, regex, output, boost::format_first_only);
+        boost::replace_all(command_clean, (*iter).str() + ")", output.substr(0, output.size() - 1));
     }
-    std::cout << command << "\n";
-    return pipe_exec(command, callbacks, env);
+
+    return pipe_exec(command_clean, callbacks, env);
+}
+
+int execute_file(std::string filename, std::map<std::string, func_t> &callbacks, environment_variables &env) {
+    boost::algorithm::trim(filename);
+    std::ifstream file(filename);
+    std::string command_str;
+    int status = 0;
+    while (std::getline(file, command_str)) {
+        if (command_str[0] != '#') {
+
+            status = interpret(command_str, callbacks, env);
+        }
+    }
+    return status;
 }
