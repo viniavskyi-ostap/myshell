@@ -32,15 +32,23 @@ class Command {
     int in_fd = 0, out_fd = 1, err_fd = 2;
     int parse_err_code = 0;
     bool background_execution = false;
-    std::vector<char *> arguments;
+
     environment_variables &env;
 public:
+    std::vector<char *> arguments;
+
     Command(std::string command, environment_variables &env,
             bool background_execution) : env(env), background_execution(background_execution) {
+        std::cout << command << std::endl;
         handle_redirections(command);
-        arguments = parse_command(std::move(command), parse_err_code);
+        arguments = parse_command(command, parse_err_code);
+        for (size_t i = 0; arguments[i]; ++i) {
+            std::cout << arguments[i] << std::endl;
+        }
+        std::cout << "in command constructor\n";
     }
 
+    
     void set_fd(int which, int new_fd) {
         if (which == 0) {
             if (in_fd != 0) {
@@ -61,6 +69,10 @@ public:
     }
 
     int execute_me(int fd_to_close, std::map<std::string, func_t> &callbacks) {
+        std::cout << " IN execute me\n";
+        for (size_t i = 0; arguments[i]; ++i) {
+            std::cout << arguments[i] << std::endl;
+        }
         if (parse_err_code != 0) {
             return parse_err_code;
         }

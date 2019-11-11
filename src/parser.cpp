@@ -25,7 +25,7 @@ static bool match_pattern(const std::string &mask, const std::string &token);
 
 static char *string_to_char_array(std::string token);
 
-std::vector<char *> parse_command(std::string &&command, int &err_code) {
+std::vector<char *> parse_command(std::string &command, int &err_code) {
     auto tokens = get_tokens(command);
     std::vector<char *> arguments;
     for (size_t i = 0; i < tokens.size(); ++i) {
