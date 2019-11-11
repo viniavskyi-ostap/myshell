@@ -2,9 +2,8 @@ cmake_minimum_required(VERSION 3.0)
 project(myshell)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_BUILD_TYPE Release)
-set(myshell_headers inc/environment_variables.h)
-set(myshell_sources src/main.cpp src/environment_variables.cpp inc/parser.h src/parser.cpp inc/builtins.h src/builtins.cpp inc/Command.h)
+set(myshell_headers inc/environment_variables.h inc/parser.h inc/builtins.h inc/Command.h inc/pipe.h )
+set(myshell_sources src/main.cpp src/environment_variables.cpp  src/parser.cpp src/builtins.cpp  src/pipe.cpp)
 
 # add_compile_options("-DPRINT_OPTIONS")
 

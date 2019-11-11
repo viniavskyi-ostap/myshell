@@ -35,7 +35,8 @@ class Command {
     std::vector<char *> arguments;
     environment_variables &env;
 public:
-    Command(std::string command, environment_variables &env) : env(env) {
+    Command(std::string command, environment_variables &env,
+            bool background_execution) : env(env), background_execution(background_execution) {
         handle_redirections(command);
         arguments = parse_command(std::move(command), parse_err_code);
     }
@@ -69,7 +70,11 @@ public:
             return assign_command(arguments, assignment_pos);
         } else if (callbacks.find(std::string(arguments[0])) != callbacks.end()) {
             // execute in current process builtin command
-            return callbacks[arguments[0]](arguments.data());
+            int out_copy = dup(1);
+            dup2(out_fd, 1);
+            int internal_err_code = callbacks[arguments[0]](arguments.data());
+            dup2(out_copy, 1);
+            return internal_err_code;
         } else {
             auto program_name = arguments[0];
             int status = 0;

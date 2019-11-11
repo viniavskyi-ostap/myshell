@@ -16,14 +16,12 @@
 #include <boost/regex.hpp>
 #include "readline/history.h"
 #include "readline/readline.h"
+#include "pipe.h"
 
 
 namespace bf=boost::filesystem;
 
 void add_external_programs_to_path(std::string program);
-
-
-int external_command_execution(std::vector<char *> &arguments, environment_variables &env);
 
 typedef std::function<int(char **)> func_t;
 
@@ -52,9 +50,8 @@ int main(int argc, char *argv[], char *envp[]) {
         if (strlen(buf.buffer) > 0) {
             add_history(buf.buffer);
         }
-
-        auto c = Command(std::string(buf.buffer), env);
-        err_code = c.execute_me(-1, callbacks);
+        auto commands = pipe_parser(std::string(buf.buffer), env);
+        err_code = pipe_exec(commands, callbacks);
     }
 
     return 0;
@@ -80,29 +77,6 @@ void add_external_programs_to_path(std::string program) {
     setenv("PATH", new_path.c_str(), 1);
 }
 
-
-int external_command_execution(std::vector<char *> &arguments, environment_variables &env) {
-    auto program_name = arguments[0];
-    int status = 0;
-
-    pid_t pid = fork();
-    if (pid == -1) {
-        std::cout << "Can not fork to execute command" << std::endl;
-        return 1;
-    } else if (pid == 0) { // child
-        if (strchr(program_name, '/')) {
-            execve(program_name, arguments.data(), env.to_array());
-        } else {
-            execvpe(program_name, arguments.data(), env.to_array());
-        }
-        std::cout << "Command '" << program_name << "' not found." << std::endl;
-        exit(EXIT_FAILURE);
-    } else { // parent
-        waitpid(pid, &status, 0);
-    }
-
-    return WEXITSTATUS(status);
-}
 
 std::map<std::string, func_t> get_callbacks(int &status, environment_variables &env, std::string &current_path) {
     std::map<std::string, func_t> callbacks;
