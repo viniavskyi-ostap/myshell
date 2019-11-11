@@ -3,7 +3,7 @@ project(myshell)
 
 set(CMAKE_CXX_STANDARD 17)
 set(myshell_headers inc/environment_variables.h inc/parser.h inc/builtins.h inc/Command.h inc/pipe.h )
-set(myshell_sources src/main.cpp src/environment_variables.cpp  src/parser.cpp src/builtins.cpp  src/pipe.cpp)
+set(myshell_sources src/main.cpp src/environment_variables.cpp  src/parser.cpp src/builtins.cpp  src/pipe.cpp src/Command.cpp)
 
 # add_compile_options("-DPRINT_OPTIONS")
 
