@@ -12,6 +12,8 @@
 #include <map>
 #include "parser.h"
 #include "builtins.h"
+#include "Command.h"
+#include <boost/regex.hpp>
 #include "readline/history.h"
 #include "readline/readline.h"
 
@@ -20,7 +22,6 @@ namespace bf=boost::filesystem;
 
 void add_external_programs_to_path(std::string program);
 
-int assign_command(std::vector<char *> &arguments, char *position);
 
 int external_command_execution(std::vector<char *> &arguments, environment_variables &env);
 
@@ -52,19 +53,8 @@ int main(int argc, char *argv[], char *envp[]) {
             add_history(buf.buffer);
         }
 
-//        read the command and parse it
-        auto arguments = parse_command(std::string(buf.buffer), err_code);
-//        execute command
-        if (arguments[0] == nullptr) continue;
-        char *assignment_pos;
-        if ((assignment_pos = strchr(arguments[0], '='))) { // execute assignment command
-            err_code = assign_command(arguments, assignment_pos);
-        } else if (callbacks.find(std::string(arguments[0])) != callbacks.end()) {
-            err_code = callbacks[arguments[0]](arguments.data());
-        } else {
-            err_code = external_command_execution(arguments, env);
-        }
-        release_arguments(arguments);
+        auto c = Command(std::string(buf.buffer), env);
+        err_code = c.execute_me(-1, callbacks);
     }
 
     return 0;
@@ -90,19 +80,6 @@ void add_external_programs_to_path(std::string program) {
     setenv("PATH", new_path.c_str(), 1);
 }
 
-int assign_command(std::vector<char *> &arguments, char *position) {
-    if (arguments.size() > 2) {
-        std::cout << "Assignment operation doesn't accept flags" << std::endl;
-        return 1;
-    }
-
-    auto program_name = arguments[0];
-    auto program_name_str = std::string(program_name);
-    ptrdiff_t pos = position - program_name;
-    setenv(program_name_str.substr(0, pos).c_str(),
-           program_name_str.substr(pos + 1).c_str(), 1);
-    return 0;
-}
 
 int external_command_execution(std::vector<char *> &arguments, environment_variables &env) {
     auto program_name = arguments[0];
